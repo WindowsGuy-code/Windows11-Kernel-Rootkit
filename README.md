@@ -15,4 +15,4 @@ it isnt suggested to activate this function since it may rise suspicion and sinc
 **This is under the MIT license.**
 
 ## Working on it...
-I am working on a dropper/planter using an kernel exploit by [Milad Karimi](https://www.exploit-db.com/?author=10413): [Kernel Exploit](https://www.exploit-db.com/exploits/52275)
+I am working on a dropper/planter using an kernel exploit by [Milad Karimi](https://www.exploit-db.com/?author=10413):      [Kernel Exploit](https://www.exploit-db.com/exploits/52275)
