@@ -11,6 +11,7 @@
 #include <TlHelp32.h>
 using namespace std;
 
+//Thanks to giovanni-orciuolo for this class (I only edited it a tiny bit)
 class CMemoryManager {
 private:
     HANDLE m_hProcess;
