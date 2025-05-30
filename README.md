@@ -1,5 +1,5 @@
 # Windows-11 Kernel Rootkit
-A Windows 11 Rootkit
+A Windows 11 Rootkit - in progress 🔧
 
 ## About
 This is as said a kernel Rootkit driver hiding any Processes or files you don't want people seeing.
@@ -19,6 +19,11 @@ You need to enable BSOD in the defs.hpp file. You can also enable other stuff li
 - Registry Keys Items (List)
   On default File Hiding and Process Hiding are enabled also the driver is hidden in the Registry (if enabled). BSOD is disabled and the lists are just
   "mocks" a few are real processes but I suggest to edit it and add you're own stuff.
+
+## delivery.cs
+This file is a mockup of what a Payload delivery might look like for this rootkit. It wont work right now but I plan on hosting a download link from my Rasperry Pi!
+It also includes a UAC bypass since the Kernel Exploit needs to run with Admin Privileges and a *cleanup* function.
+It is my first c# script so dont excpect much guys😅!
 
 
 ## Some More Stuff 🤓
