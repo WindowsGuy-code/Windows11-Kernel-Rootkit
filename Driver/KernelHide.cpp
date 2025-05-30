@@ -238,7 +238,7 @@ BOOL APIENTRY DLLMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpreserv
     std::vector<DWORD> pidstohide;
 
     for (const char  *x : HideProcesses) {
-        DWORD pid = MemoryManager->GetProcId(x);
+        DWORD pid = MemoryManager->GetProcId(x); //Funfact: A PId can also be an Integer since both a DWORD or Integer holds four bytes, but a DWORD is used more often in in Memory Hacking etc.
         if (!(pid == 0)){
             pidstohide.push_back(pid);
         }
