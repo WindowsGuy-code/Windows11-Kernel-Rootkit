@@ -1,6 +1,8 @@
 # Windows-11 Kernel Rootkit
 A Windows 11 Rootkit - in progress 🔧
 
+## TODO: Change the vector in HideReg.cpp to the HIDE_REGS vector from defs.hpp
+
 ## About
 This is as said a kernel Rootkit driver hiding any Processes or files you don't want people seeing.
 It also has some more functions involved like a BSOD and (offcourse) a hooking function called CloudHook.
