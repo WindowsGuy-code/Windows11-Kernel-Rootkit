@@ -10,7 +10,7 @@ It is built to *bypass* any Sys Admin Tool and may (if you choose) trigger a Blu
 it isnt suggested to activate this BSOD function since it may rise suspicion and since **NtQuerySystemInformation** is already edited it will already be hidden.
 
 ## Config ⚙️
-You need to enable BSOD in the defs.hpp file. You can also enable other stuff like:
+You need to enable BSOD in the defs.hpp file (If you want to). You can also enable other stuff like:
 - File Hiding (Enable / Disable)
 - Process Hiding (Enable / Disable)
 - Process Hide Items (List)
