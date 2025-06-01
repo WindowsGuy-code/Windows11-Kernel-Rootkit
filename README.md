@@ -32,6 +32,8 @@ It is my first c# script so dont excpect much guys😅!
 
 ## BTW
 I highly suggest reading the comments in the USER CONFIGURATION since otherwise you might understand something wrong;
+If you want to host a site to curl and download the rootkit you will probaly have to change some of the folder logic,
+When I get to host my own download site I will be setting everything default optimised to that file structure;
 Not everything is optimised 😉.
 
 
