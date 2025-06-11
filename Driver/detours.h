@@ -11,7 +11,7 @@
 #pragma once
 #ifndef _DETOURS_H_
 #define _DETOURS_H_
-
+// Not needed anymore
 #define DETOURS_VERSION     30000   // 3.00.00
 
 //////////////////////////////////////////////////////////////////////////////
