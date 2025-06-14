@@ -21,7 +21,7 @@ You need to enable BSOD in the defs.hpp file (If you want to). You can also enab
 - Delay Time (Number)
   On default File Hiding and Process Hiding are enabled also the driver is hidden in the Registry (if enabled). BSOD is disabled and the lists are just
   "mocks" and a few are real processes but I suggest to edit it and add you're own stuff.
-  The delay time **must** be in 100 units of nanoseconds, use TimeConverter.py to convert hours into 100 units of nanoseconds.
+  The delay time **must** be in 100 units of nanoseconds.
   The Debug Mode is disabled on default but it logs everything it currently does by using a bit modified *console.hpp* that can be found in *defs.hpp* ;p.
 
 ## delivery.cs
@@ -47,7 +47,6 @@ Not everything is optimised 😉.
 - Debug Mode (Everything)
 - Obsfuscated delivery example (delivery.cs); This was more of a Test.
 - Time Delay (defs.hpp)
-- Time converter (TimeConverter.py)
 - Added InfinityHookProMax for hooking
 
 ## Working on it...
