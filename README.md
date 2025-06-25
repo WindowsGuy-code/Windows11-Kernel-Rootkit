@@ -25,29 +25,26 @@ You need to enable BSOD in the defs.hpp file (If you want to). You can also enab
   The Debug Mode is disabled on default but it logs everything it currently does by using a bit modified *console.hpp* that can be found in *defs.hpp* ;p.
 
 ## delivery.cs
-This file is a mockup of what a Payload delivery might look like for this rootkit. It wont work right now but I plan on hosting a download link from my Rasperry Pi!
-It also includes a UAC bypass since the Kernel Exploit needs to run with Admin Privileges and a *cleanup* function.
-It is my first c# script so dont excpect much guys😅!
+This file is a mockup of what a Payload delivery might look like for this rootkit. It needs a actual usable download link ofcourse.
+Might not be the best since it is my first ever c-sharp project.
 
 ## BTW
 I highly suggest reading the comments in the USER CONFIGURATION since otherwise you might understand something wrong;
-If you want to host a site to curl and download the rootkit you will probaly have to change some of the folder logic,
-When I get to host my own download site I will be setting everything default optimised to that file structure;
+If you want to host a site to curl and download the rootkit you will probaly have to change some of the folder logic.  
 Not everything is optimised 😉.
 
 
 ## Some More Stuff 🤓
-**Thanks to [Hakai Offsec](https://github.com/hakaioffsec) for their [CVE-2024-21338](https://github.com/hakaioffsec/CVE-2024-21338) Kernel Privelege Escalation PoC!**
-**All the credits are in the codes comments.**
+**Thanks to [Hakai Offsec](https://github.com/hakaioffsec) for their [CVE-2024-21338](https://github.com/hakaioffsec/CVE-2024-21338) Kernel Privelege Escalation PoC!**  
+**All the credits are in the codes comments.**  
 **This is under the MIT license.**
 
 ## Recently finished ✅
 - Payload delivery example (delivery.cs)
 - UAC Bypass (delivery.cs)
 - Debug Mode (Everything)
-- Obsfuscated delivery example (delivery.cs); This was more of a Test.
 - Time Delay (defs.hpp)
 - Added InfinityHookProMax for hooking
 
 ## Working on it...
-I am currently replacing some errors of me usinh std libs etc and adding comments explaining everything...
+I am currently working on a better exploit (Current one has been patched) and adding comments explaining everything...
