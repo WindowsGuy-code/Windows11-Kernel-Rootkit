@@ -2104,9 +2104,6 @@ typedef struct _FILE_DIRECTORY_INFORMATION {
   WCHAR         FileName[1];
 } FILE_DIRECTORY_INFORMATION, *PFILE_DIRECTORY_INFORMATION;
 
-pNtQueryDirectoryFile NtQueryDirectoryFile = nullptr;
-pNtQueryDirectoryFile OriginalNtQueryDirectoryFile = nullptr;
-NtQuerySystemInformation_t OriginalNtQuerySystemInformation = nullptr;
 
 //NTSYSAPI 
 //NTSTATUS
