@@ -18,7 +18,7 @@ You need to enable BSOD in the defs.hpp file (If you want to). You can also enab
 - Registry Keys Items (List)
 - Debug Mode (Enable / Disable)
 - Delay Execution (Enable / Disable)
-- Delay Time (Number)
+- Delay Time (Number)  
   On default File Hiding and Process Hiding are enabled also the driver is hidden in the Registry (if enabled). BSOD is disabled and the lists are just
   "mocks" and a few are real processes but I suggest to edit it and add you're own stuff.
   The delay time **must** be in 100 units of nanoseconds.
