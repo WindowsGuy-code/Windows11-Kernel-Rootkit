@@ -22,7 +22,7 @@ You need to enable BSOD in the defs.hpp file (If you want to). You can also enab
   On default File Hiding and Process Hiding are enabled also the driver is hidden in the Registry (if enabled). BSOD is disabled and the lists are just
   "mocks" and a few are real processes but I suggest to edit it and add you're own stuff.
   The delay time **must** be in 100 units of nanoseconds.
-  The Debug Mode is disabled on default but it logs everything it currently does by using a bit modified *console.hpp* that can be found in *defs.hpp* ;p.
+  The Debug Mode is disabled on default but it logs everything it currently does by using DbgPrint wich can be found in *defs.hpp* ;p.
 
 ## delivery.cs
 This file is a mockup of what a Payload delivery might look like for this rootkit. It needs a actual usable download link ofcourse.
