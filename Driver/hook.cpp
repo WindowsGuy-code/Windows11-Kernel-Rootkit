@@ -358,7 +358,7 @@ namespace k_hook
 		return true;
 	}
 
-	bool start()
+	bool start(PCLIENT_ID DectionRoutine)
 	{
 		if (!m_ssdt_call_back) return false;
 
@@ -420,6 +420,7 @@ namespace k_hook
 			InitializeObjectAttributes(&att, 0, OBJ_KERNEL_HANDLE, 0, 0);
 			NTSTATUS status = PsCreateSystemThread(&h_thread, THREAD_ALL_ACCESS, &att, 0, &client, detect_routine, 0);
 			if (NT_SUCCESS(status)) ZwClose(h_thread);
+      *DectionRoutine = client;
 			DbgPrintEx(0, 0, "[%s] detect routine thread id is %d \n", __FUNCTION__, (int)(UINT_PTR)client.UniqueThread);
 		}
 

