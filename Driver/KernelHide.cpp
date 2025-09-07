@@ -5,6 +5,8 @@
 #include "utils.hpp"
 //define global variables
 
+// FIX: Hde disassembler uses user mode api
+
 wchar_t dllpath;
 wchar_t target_proc;
 
